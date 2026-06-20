@@ -72,6 +72,52 @@ fi
 # 1. Check for ZFS utility installation
 if ! command -v zfs &>/dev/null || ! command -v zpool &>/dev/null; then
     echo -e "${YELLOW}ZFS utilities are not installed on this system.${NC}"
+    
+    # Robust checker to enable contrib/non-free on Debian
+    enable_debian_non_free_contrib() {
+        echo "--> Verifying package repository components..."
+        if apt-cache show zfsutils-linux &>/dev/null; then
+            echo "  ZFS packages are already visible in your current package sources."
+            return 0
+        fi
+        
+        echo -e "${YELLOW}Warning: 'zfsutils-linux' is not visible in your current package sources.${NC}"
+        echo "Debian places ZFS utilities in the 'contrib' and 'non-free' components."
+        read -r -p "Would you like this script to automatically enable 'contrib' and 'non-free' sources? (y/n) [y]: " enable_repo
+        enable_repo=${enable_repo:-y}
+        
+        if [[ ! "$enable_repo" =~ ^[Yy]$ ]]; then
+            echo -e "${RED}Error: Cannot proceed without enabling ZFS packages.${NC}"
+            exit 1
+        fi
+        
+        echo "--> Appending contrib, non-free, and non-free-firmware to sources..."
+        # Modern DEB822 format (Debian 12 default for standard installs)
+        if [ -f "/etc/apt/sources.list.d/debian.sources" ]; then
+            echo "  Configuring modern /etc/apt/sources.list.d/debian.sources..."
+            sed -i -E 's/^(Components:.*main)(.*)/\1 contrib non-free non-free-firmware\2/' /etc/apt/sources.list.d/debian.sources
+            sed -i -E 's/contrib contrib/contrib/g; s/non-free non-free/non-free/g; s/non-free-firmware non-free-firmware/non-free-firmware/g' /etc/apt/sources.list.d/debian.sources
+        fi
+        
+        # Legacy format
+        if [ -f "/etc/apt/sources.list" ]; then
+            echo "  Configuring legacy /etc/apt/sources.list..."
+            sed -i -E '/^deb/ s/ main/ main contrib non-free non-free-firmware/g' /etc/apt/sources.list
+            sed -i -E 's/contrib contrib/contrib/g; s/non-free non-free/non-free/g; s/non-free-firmware non-free-firmware/non-free-firmware/g' /etc/apt/sources.list
+        fi
+        
+        echo "--> Refreshing package cache..."
+        apt-get update
+        
+        if ! apt-cache show zfsutils-linux &>/dev/null; then
+            echo -e "${RED}Error: ZFS packages are still not visible after enabling sources. Please check your internet connection.${NC}"
+            exit 1
+        fi
+        echo -e "${GREEN}✔ Repository components enabled successfully.${NC}"
+    }
+
+    enable_debian_non_free_contrib
+
     echo "This helper will install 'zfsutils-linux' and 'zfs-dkms'."
     echo -e "${YELLOW}Note: Compiling kernel modules via DKMS may take several minutes.${NC}"
     read -r -p "Would you like to install ZFS utilities now? (y/n) [y]: " inst_zfs
