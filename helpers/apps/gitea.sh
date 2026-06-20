@@ -5,14 +5,14 @@
 set -euo pipefail
 
 SECURE_PATH="$1"
-BULK_PATH="$2"
+DATA_PATH="$2"
 SYS_USER="$3"
 
 echo "--> Initializing Gitea Git Repositories..."
 
-# Create secure state directory (mounted over NFS to Proxmox hosts)
-mkdir -p "${SECURE_PATH}/app/gitea_repos"
+# Create secure app data directory for Gitea
+mkdir -p "${SECURE_PATH}/app/gitea/repos"
 
 # Align permissions
-chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/gitea_repos"
+chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/gitea"
 echo "  Gitea directories initialized successfully."

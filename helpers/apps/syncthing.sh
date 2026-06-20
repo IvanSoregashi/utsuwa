@@ -5,7 +5,7 @@
 set -euo pipefail
 
 SECURE_PATH="$1"
-BULK_PATH="$2"
+DATA_PATH="$2"
 SYS_USER="$3"
 
 echo "--> Initializing Syncthing..."

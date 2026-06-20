@@ -5,14 +5,16 @@
 set -euo pipefail
 
 SECURE_PATH="$1"
-BULK_PATH="$2"
+DATA_PATH="$2"
 SYS_USER="$3"
 
 echo "--> Initializing WebDAV..."
 
-# Create application state directory
-mkdir -p "${SECURE_PATH}/app/webdav"
+# Create data directories for WebDAV access
+mkdir -p "${DATA_PATH}/gallery"
+mkdir -p "${DATA_PATH}/books"
 
 # Align permissions
-chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/webdav"
+chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/gallery"
+chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/books"
 echo "  WebDAV directories initialized successfully."

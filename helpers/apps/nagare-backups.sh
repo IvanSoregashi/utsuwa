@@ -5,14 +5,14 @@
 set -euo pipefail
 
 SECURE_PATH="$1"
-BULK_PATH="$2"
+DATA_PATH="$2"
 SYS_USER="$3"
 
 echo "--> Initializing Nagare Proxmox VM/LXC Backup targets..."
 
-# Create bulk backup target directory
-mkdir -p "${BULK_PATH}/nagare_backups"
+# Create data backup target directory
+mkdir -p "${DATA_PATH}/nagare_backups"
 
 # Align permissions
-chown -R "${SYS_USER}:${SYS_USER}" "${BULK_PATH}/nagare_backups"
+chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/nagare_backups"
 echo "  Nagare Backups directory initialized successfully."

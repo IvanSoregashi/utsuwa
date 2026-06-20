@@ -32,12 +32,12 @@ if [ ! -d "$1" ] || [ ! -d "$2" ]; then
 fi
 
 SECURE_PATH=$(realpath "$1")
-BULK_PATH=$(realpath "$2")
+DATA_PATH=$(realpath "$2")
 
 echo -e "${CYAN}======================================================================${NC}"
 echo -e "${BOLD}                 UTSUWA DIRECTORY & APP INITIALIZATION                ${NC}"
 echo -e "Secure Path: ${GREEN}$SECURE_PATH${NC}"
-echo -e "Bulk Path:   ${GREEN}$BULK_PATH${NC}"
+echo -e "Data Path:   ${GREEN}$DATA_PATH${NC}"
 echo -e "${CYAN}======================================================================${NC}"
 
 # Define the user to own all directories (UID/GID 1000)
@@ -89,13 +89,13 @@ check_mount_safety() {
 
 echo "--> Verifying drive mount safety..."
 check_mount_safety "$SECURE_PATH" "Secure"
-check_mount_safety "$BULK_PATH" "Bulk"
+check_mount_safety "$DATA_PATH" "Data"
 
 
 # --- 3. Setup Standardized /srv Mounts ---
 echo -e "\n--> Preparing standardized /srv bind mounts..."
 sudo mkdir -p /srv/encrypted
-sudo mkdir -p /srv/storage
+sudo mkdir -p /srv/data
 
 # Helper function to append to /etc/fstab safely if the mount point isn't already mapped
 add_fstab_entry() {
@@ -110,7 +110,7 @@ add_fstab_entry() {
 }
 
 add_fstab_entry "$SECURE_PATH" "/srv/encrypted"
-add_fstab_entry "$BULK_PATH" "/srv/storage"
+add_fstab_entry "$DATA_PATH" "/srv/data"
 
 # --- 4. Mount the new paths (Idempotent check) ---
 echo "--> Mounting standardized /srv layers..."
@@ -121,10 +121,10 @@ else
     echo "  /srv/encrypted is already mounted. Skipping."
 fi
 
-if ! mountpoint -q /srv/storage; then
-    sudo mount /srv/storage || echo -e "${YELLOW}Warning: /srv/storage could not mount.${NC}"
+if ! mountpoint -q /srv/data; then
+    sudo mount /srv/data || echo -e "${YELLOW}Warning: /srv/data could not mount.${NC}"
 else
-    echo "  /srv/storage is already mounted. Skipping."
+    echo "  /srv/data is already mounted. Skipping."
 fi
 
 
@@ -140,17 +140,17 @@ run_app_setup() {
     local script_path="$1"
     local script_name
     script_name=$(basename "$script_path" .sh)
-    
+
     echo -e "\n${CYAN}------------------------------------------------------------${NC}"
     echo -e "Executing: ${BOLD}${script_name^^}${NC}"
     echo -e "${CYAN}------------------------------------------------------------${NC}"
-    bash "$script_path" "$SECURE_PATH" "$BULK_PATH" "$SYS_USER"
+    bash "$script_path" "$SECURE_PATH" "$DATA_PATH" "$SYS_USER"
 }
 
 if [ -d "$APPS_HELPERS_DIR" ]; then
     # Find all helper scripts in the apps folder
     mapfile -t app_scripts < <(find "$APPS_HELPERS_DIR" -type f -name "*.sh" | sort)
-    
+
     if [ ${#app_scripts[@]} -eq 0 ]; then
         echo -e "${YELLOW}Warning: No application setup scripts found under ${APPS_HELPERS_DIR}.${NC}"
     else
@@ -169,7 +169,7 @@ if [ -d "$APPS_HELPERS_DIR" ]; then
                     # format name nicely for printing (e.g. net-library -> Net Library)
                     local pretty_name
                     pretty_name=$(echo "$script_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
-                    
+
                     read -r -p "Initialize directory trees for ${pretty_name}? (y/n) [y]: " confirm_app
                     confirm_app=${confirm_app:-y}
                     if [[ "$confirm_app" =~ ^[Yy]$ ]]; then
@@ -192,11 +192,11 @@ fi
 # Align base permissions as fallback
 echo -e "\n--> Aligning system volume permissions..."
 sudo chown "${SYS_USER}:${SYS_USER}" "$SECURE_PATH" || true
-sudo chown "${SYS_USER}:${SYS_USER}" "$BULK_PATH" || true
+sudo chown "${SYS_USER}:${SYS_USER}" "$DATA_PATH" || true
 
 echo -e "\n======================================================================"
 echo -e "${GREEN}✔ Initialization Complete!${NC}"
 echo -e "Standardized system-level mappings:"
 echo -e "  /srv/encrypted  -> $SECURE_PATH"
-echo -e "  /srv/storage    -> $BULK_PATH"
+echo -e "  /srv/data       -> $DATA_PATH"
 echo -e "======================================================================\n"
