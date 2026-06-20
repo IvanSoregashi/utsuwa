@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Utsuwa: Interactive Disk Setup Wizard
+# Utsuwa: Interactive Disk Setup Wizard (with Rich Scan Diagnostics)
 # This script scans for unused block devices and guides the user through setting
 # up either an Ext4 single partition or a ZFS storage pool (Single or Mirror).
 # ==============================================================================
@@ -33,72 +33,74 @@ mkdir -p "$HELPERS_DIR"
 
 # --- Helper Functions ---
 
-# Check if a disk (or any partition under it) is currently in use
-is_disk_in_use() {
+# Perform full analysis on a disk and populate reasons if not suitable
+analyze_disk_suitability() {
     local disk_name="$1" # e.g. nvme0n1 or sda
     local dev_path="/dev/${disk_name}"
+    local -n reasons_arr=$2
     
-    # 1. Check if the disk or any partition under it is currently mounted
-    if lsblk -no MOUNTPOINT "$dev_path" 2>/dev/null | grep -q -v '^$'; then
-        return 0 # in use
+    # 1. Check if the disk itself or any partition under it is currently mounted
+    local active_mounts
+    active_mounts=$(lsblk -no MOUNTPOINT "$dev_path" 2>/dev/null | grep -v '^$' || true)
+    if [ -n "$active_mounts" ]; then
+        local formatted_mounts
+        formatted_mounts=$(echo "$active_mounts" | paste -sd, -)
+        reasons_arr+=("Device or child partition is actively mounted at: ${formatted_mounts}")
     fi
     
-    # 2. Check if it's already part of a ZFS pool
-    if lsblk -no FSTYPE "$dev_path" 2>/dev/null | grep -q 'zfs_member'; then
-        return 0 # in use
+    # 2. Check if any partition of this disk is mounted on system-critical paths like / or /boot
+    local mps
+    mps=$(lsblk -rno MOUNTPOINT "$dev_path" 2>/dev/null | grep -v '^$' || true)
+    for mp in $mps; do
+        if [ "$mp" = "/" ]; then
+            reasons_arr+=("Contains the active root filesystem (/)")
+        elif [ "$mp" = "/boot" ]; then
+            reasons_arr+=("Contains the active system boot directory (/boot)")
+        elif [[ "$mp" == /boot/* ]]; then
+            reasons_arr+=("Contains system bootloader partition (${mp})")
+        fi
+    done
+    
+    # 3. Check if it's already part of a ZFS pool
+    local fstypes
+    fstypes=$(lsblk -no FSTYPE "$dev_path" 2>/dev/null | grep -v '^$' || true)
+    if echo "$fstypes" | grep -q 'zfs_member'; then
+        reasons_arr+=("ZFS member signature detected (belongs to a pool)")
     fi
     if command -v zpool &>/dev/null; then
         if zpool status -v 2>/dev/null | grep -q "$disk_name"; then
-            return 0 # in use
+            reasons_arr+=("Device is claimed by an active ZFS pool")
         fi
     fi
     
-    # 3. Check for swap space
-    if lsblk -no FSTYPE "$dev_path" 2>/dev/null | grep -q 'swap'; then
-        return 0 # in use
+    # 4. Check for swap space
+    if echo "$fstypes" | grep -q 'swap'; then
+        reasons_arr+=("Contains virtual memory swap space")
     fi
-    
-    # 4. Check if any partition of this disk is mounted on / or /boot
-    local mps
-    mps=$(lsblk -rno MOUNTPOINT "$dev_path" 2>/dev/null | grep -v '^$')
-    for mp in $mps; do
-        if [ "$mp" = "/" ] || [ "$mp" = "/boot" ] || [[ "$mp" == /boot/* ]]; then
-            return 0 # system disk, in use
-        fi
-    done
     
     # 5. Filter out read-only devices
     if [ -f "/sys/block/${disk_name}/ro" ]; then
         if [ "$(cat "/sys/block/${disk_name}/ro")" = "1" ]; then
-            return 0 # read-only
+            reasons_arr+=("Device is write-protected / read-only")
         fi
     fi
     
-    # 6. Filter out virtual or bootloader/hardware partitions
-    if [[ "$disk_name" =~ ^loop ]] || [[ "$disk_name" =~ ^ram ]] || [[ "$disk_name" =~ ^dm- ]] || [[ "$disk_name" =~ ^md ]] || [[ "$disk_name" =~ boot[0-9]$ ]]; then
-        return 0 # in use / ignore
+    # 6. Filter out virtual or bootloader/hardware partitions/special disks
+    if [[ "$disk_name" =~ ^loop ]]; then
+        reasons_arr+=("Virtual loopback device")
     fi
-    
-    return 1 # not in use
-}
-
-# Scan for available disks and output them formatted as "name;size;model"
-get_available_disks() {
-    # Scan block devices of type disk
-    # Format: name size model
-    lsblk -pdno NAME,SIZE,TYPE 2>/dev/null | while read -r dev_path size type; do
-        if [ "$type" = "disk" ]; then
-            local dev_name
-            dev_name=$(basename "$dev_path")
-            
-            # Check if disk is in use
-            if ! is_disk_in_use "$dev_name"; then
-                local model
-                model=$(lsblk -dno MODEL "$dev_path" 2>/dev/null | xargs || echo "Unknown Model")
-                echo "$dev_name;$size;$model"
-            fi
-        fi
-    done
+    if [[ "$disk_name" =~ ^ram ]]; then
+        reasons_arr+=("System RAM disk")
+    fi
+    if [[ "$disk_name" =~ ^dm- ]]; then
+        reasons_arr+=("Device Mapper block volume (LVM, LUKS, or mdadm)")
+    fi
+    if [[ "$disk_name" =~ ^md ]]; then
+        reasons_arr+=("Software RAID (mdadm) volume")
+    fi
+    if [[ "$disk_name" =~ boot[0-9]$ ]]; then
+        reasons_arr+=("Hardware bootloader partition (mmcblk boot layer)")
+    fi
 }
 
 # Draw beautiful header
@@ -112,10 +114,58 @@ print_header() {
     echo ""
 }
 
+# Scan and print detailed diagnostics for EVERY disk on the system
+run_storage_diagnostics() {
+    local -n suitable_ref=$1
+    suitable_ref=()
+    
+    echo -e "${BOLD}[SCAN DIAGNOSTICS] Evaluating system storage devices...${NC}"
+    echo -e "${BLUE}----------------------------------------------------------------------${NC}"
+    
+    # Loop over all block devices of type disk
+    # We use mapfile to safely parse line-by-line
+    local raw_disks
+    mapfile -t raw_disks < <(lsblk -pdno NAME,SIZE,TYPE 2>/dev/null | grep -w 'disk' || true)
+    
+    for row in "${raw_disks[@]}"; do
+        [ -z "$row" ] && continue
+        
+        # Read fields: path, size, type
+        local dev_path size type
+        read -r dev_path size type <<< "$row"
+        local dev_name
+        dev_name=$(basename "$dev_path")
+        
+        local model
+        model=$(lsblk -dno MODEL "$dev_path" 2>/dev/null | xargs || echo "Unknown Model")
+        
+        # Evaluate suitability
+        local reasons=()
+        analyze_disk_suitability "$dev_name" reasons
+        
+        echo -e "Evaluating ${CYAN}/dev/${dev_name}${NC} [${size}] - ${model}:"
+        
+        if [ ${#reasons[@]} -eq 0 ]; then
+            echo -e "  --> Status: ${GREEN}${BOLD}✔ SUITABLE${NC} (Unused & ready for provisioning)"
+            # Save to suitable list
+            suitable_ref+=("${dev_name};${size};${model}")
+        else
+            echo -e "  --> Status: ${RED}${BOLD}✘ NOT SUITABLE${NC}"
+            echo -e "  --> Reason(s):"
+            for r in "${reasons[@]}"; do
+                echo -e "      * ${r}"
+            done
+        fi
+        echo ""
+    done
+    echo -e "${BLUE}----------------------------------------------------------------------${NC}"
+    echo ""
+}
+
 # Display menu of available disks
-display_disks() {
+display_suitable_disks() {
     local -n disk_arr=$1
-    echo -e "${BOLD}Available / Unused Disks Found:${NC}"
+    echo -e "${BOLD}Suitable / Ready-to-use Disks Found:${NC}"
     echo -e "${BLUE}----------------------------------------------------------------------${NC}"
     printf "  %-4s  %-12s  %-10s  %-30s\n" "ID" "Device Name" "Size" "Model / Hardware Details"
     echo -e "${BLUE}----------------------------------------------------------------------${NC}"
@@ -130,24 +180,25 @@ display_disks() {
     echo ""
 }
 
-# --- Main Logic ---
+# --- Main Logic Loop ---
 
 while true; do
     print_header
 
-    # Populate available disks
-    mapfile -t available_disks < <(get_available_disks)
-    num_disks=${#available_disks[@]}
+    # Run diagnostics and gather suitable disks
+    suitable_disks=()
+    run_storage_diagnostics suitable_disks
+    num_disks=${#suitable_disks[@]}
 
     if [ "$num_disks" -eq 0 ]; then
         echo -e "${YELLOW}No unused or unmounted physical disks detected on this system.${NC}"
-        echo "Please make sure your drives are connected and not currently mounted/in use."
+        echo "Please make sure your drives are connected and not currently in use."
         echo ""
         read -r -p "Press Enter to exit or try scanning again..." _
         exit 0
     fi
 
-    display_disks available_disks
+    display_suitable_disks suitable_disks
 
     echo -e "${BOLD}What would you like to configure?${NC}"
     echo "  1) Set up an Ext4 Partition (Single disk - great for bulk/unencrypted storage)"
@@ -170,7 +221,7 @@ while true; do
                 continue
             fi
             
-            selected_disk_entry="${available_disks[$((disk_id - 1))]}"
+            selected_disk_entry="${suitable_disks[$((disk_id - 1))]}"
             IFS=';' read -r selected_disk _ _ <<< "$selected_disk_entry"
             
             # Execute Ext4 helper script
@@ -199,7 +250,7 @@ while true; do
                     read -r -p "Press Enter to return to main menu..." _
                     continue
                 fi
-                selected_disk_entry="${available_disks[$((disk_id - 1))]}"
+                selected_disk_entry="${suitable_disks[$((disk_id - 1))]}"
                 IFS=';' read -r selected_disk _ _ <<< "$selected_disk_entry"
                 
                 # Execute ZFS helper script for single disk
@@ -232,8 +283,8 @@ while true; do
                     continue
                 fi
                 
-                disk1_entry="${available_disks[$((disk1_id - 1))]}"
-                disk2_entry="${available_disks[$((disk2_id - 1))]}"
+                disk1_entry="${suitable_disks[$((disk1_id - 1))]}"
+                disk2_entry="${suitable_disks[$((disk2_id - 1))]}"
                 IFS=';' read -r disk1 _ _ <<< "$disk1_entry"
                 IFS=';' read -r disk2 _ _ <<< "$disk2_entry"
                 
