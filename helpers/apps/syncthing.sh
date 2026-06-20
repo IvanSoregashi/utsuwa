@@ -1,0 +1,18 @@
+#!/bin/bash
+# ==============================================================================
+# Utsuwa App Setup: Syncthing
+# ==============================================================================
+set -euo pipefail
+
+SECURE_PATH="$1"
+BULK_PATH="$2"
+SYS_USER="$3"
+
+echo "--> Initializing Syncthing..."
+
+# Create application state directory
+mkdir -p "${SECURE_PATH}/app/syncthing"
+
+# Align permissions
+chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/syncthing"
+echo "  Syncthing directories initialized successfully."
