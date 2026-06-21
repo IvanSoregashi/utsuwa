@@ -164,10 +164,8 @@ if [ -d "$APPS_HELPERS_DIR" ]; then
             2)
                 echo -e "\n--> Starting Interactive Application Selector..."
                 for script in "${app_scripts[@]}"; do
-                    local script_name
                     script_name=$(basename "$script" .sh)
                     # format name nicely for printing (e.g. net-library -> Net Library)
-                    local pretty_name
                     pretty_name=$(echo "$script_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
 
                     read -r -p "Initialize directory trees for ${pretty_name}? (y/n) [y]: " confirm_app
