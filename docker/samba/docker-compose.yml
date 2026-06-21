@@ -12,6 +12,7 @@ services:
     command: -t -p # -t = log to stdout, -p = enable printing of smb configs
     volumes:
       - ./smb.conf:/etc/samba/smb.conf:ro
+      - logs:/var/log/samba:rw
       - vault:/share/vault
       - gallery:/share/gallery
       - books:/share/books
@@ -40,6 +41,12 @@ volumes:
       type: none
       o: bind
       device: /srv/data/books
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/samba/log
 
 networks:
   utsuwa:
