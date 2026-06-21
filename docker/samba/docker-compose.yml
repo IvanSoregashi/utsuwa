@@ -13,6 +13,9 @@ services:
       - vault:/share/vault
       - gallery:/share/gallery
       - books:/share/books
+    ports:
+      - "445:445" # SMB/CIFS (Modern Windows)
+      - "139:139" # NetBIOS Session Service (Legacy)
     networks:
       - utsuwa
 
