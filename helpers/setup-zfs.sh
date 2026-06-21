@@ -13,6 +13,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # --- Parameters ---
@@ -20,6 +21,12 @@ SYS_USER="${1}"
 POOL_TYPE="${2}" # "single" or "mirror"
 DISK1_NAME="${3}" # e.g. nvme1n1
 DISK2_NAME="${4:-}" # e.g. nvme2n1 (only if mirror)
+
+# --- Helper to log and run system commands ---
+run() {
+    echo -e "${BLUE}--> Running: ${BOLD}$*${NC}"
+    "$@"
+}
 
 echo -e "${CYAN}======================================================================${NC}"
 echo -e "                   ZFS STORAGE POOL PROVISIONING                      "
@@ -77,7 +84,7 @@ fi
 # Ensure ZFS module is loaded
 if ! lsmod | grep -q zfs; then
     echo "--> Loading ZFS kernel module..."
-    modprobe zfs || true
+    run modprobe zfs || true
 fi
 
 # 2. Gather parameters
@@ -175,17 +182,10 @@ if [ "$confirm_zfs" != "yes" ]; then
 fi
 
 # 5. Execute Pool Creation
-# We employ strict standard-compliant performance flags:
-# - ashift=12: Matches modern NVMe internal 4KB block sector size to avoid massive write degradation and SSD wear.
-# - acltype=posixacl: Enables POSIX access list structure for correct Linux service permission mappings.
-# - xattr=sa: Stores extended attributes inside filesystem system header instead of separate hidden files (much faster metadata lookups).
-# - dnodesize=auto: Extends storage metadata capacity to support complex file layouts.
-# - normalization=formD: Enforces standard UTF-8 filenames across multiple OS platforms (e.g. Windows/macOS/Linux clients).
-# - devices=off: Security hardening that prevents device node execution on the pool.
 echo -e "\n--> Creating ZFS Pool '${POOL_NAME}'..."
 
 if [ "$POOL_TYPE" = "mirror" ]; then
-    zpool create -f -o ashift=12 \
+    run zpool create -f -o ashift=12 \
       -O acltype=posixacl \
       -O xattr=sa \
       -O dnodesize=auto \
@@ -196,7 +196,7 @@ if [ "$POOL_TYPE" = "mirror" ]; then
       "$DISK1_BY_ID" \
       "$DISK2_BY_ID"
 else
-    zpool create -f -o ashift=12 \
+    run zpool create -f -o ashift=12 \
       -O acltype=posixacl \
       -O xattr=sa \
       -O dnodesize=auto \
@@ -214,7 +214,7 @@ if [[ "$create_encrypted" =~ ^[Yy]$ ]]; then
     echo -e "${YELLOW}Please enter a secure passphrase for the encrypted volume when prompted below.${NC}"
     
     # We must allow user keyboard interaction for passphrase entry
-    zfs create \
+    run zfs create \
       -o encryption=on \
       -o keyformat=passphrase \
       -o keylocation=prompt \
@@ -228,11 +228,11 @@ if [[ "$limit_arc" =~ ^[Yy]$ ]] && [ -n "$ARC_LIMIT_INPUT" ]; then
     ARC_BYTES=$(parse_to_bytes "$ARC_LIMIT_INPUT")
     if [ "$ARC_BYTES" -gt 0 ]; then
         echo -e "\n--> Limiting ZFS ARC Memory cache to ${ARC_LIMIT_INPUT} (${ARC_BYTES} bytes)..."
-        mkdir -p /etc/modprobe.d
-        echo "options zfs zfs_arc_max=${ARC_BYTES}" | tee /etc/modprobe.d/zfs.conf > /dev/null
+        run mkdir -p /etc/modprobe.d
+        echo "options zfs zfs_arc_max=${ARC_BYTES}" | run tee /etc/modprobe.d/zfs.conf > /dev/null
         
         echo "--> Updating system initramfs boot configuration..."
-        update-initramfs -u -k all
+        run update-initramfs -u -k all
         echo -e "${GREEN}✔ ARC Limit successfully written & system initramfs updated.${NC}"
     else
         echo -e "${YELLOW}Warning: Could not parse '${ARC_LIMIT_INPUT}' to valid byte size. Skipping ARC limit config.${NC}"
@@ -241,10 +241,10 @@ fi
 
 # 8. Align Permissions & Ownership
 echo -e "\n--> Aligning mount directories permission to active user: ${GREEN}${SYS_USER}${NC}..."
-chown -R "${SYS_USER}:${SYS_USER}" "/${POOL_NAME}"
+run chown -R "${SYS_USER}:${SYS_USER}" "/${POOL_NAME}"
 if [[ "$create_encrypted" =~ ^[Yy]$ ]]; then
     # ZFS auto-mounts datasets inside the pool path
-    chown -R "${SYS_USER}:${SYS_USER}" "/${POOL_NAME}/${DATASET_NAME}"
+    run chown -R "${SYS_USER}:${SYS_USER}" "/${POOL_NAME}/${DATASET_NAME}"
 fi
 
 echo -e "\n${GREEN}✔ ZFS Pool provisioned successfully!${NC}"

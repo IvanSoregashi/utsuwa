@@ -105,7 +105,6 @@ analyze_disk_suitability() {
 
 # Draw beautiful header
 print_header() {
-    clear
     echo -e "${CYAN}======================================================================${NC}"
     echo -e "${BOLD}                     UTSUWA DISK SETUP WIZARD                         ${NC}"
     echo -e "      Guides you through setting up unmounted NVMe/SATA drives.      "
@@ -222,10 +221,11 @@ while true; do
             fi
             
             selected_disk_entry="${suitable_disks[$((disk_id - 1))]}"
-            IFS=';' read -r selected_disk _ _ <<< "$selected_disk_entry"
+            IFS=';' read -r selected_disk _ model <<< "$selected_disk_entry"
             
             # Execute Ext4 helper script
             if [ -f "${HELPERS_DIR}/setup-ext4.sh" ]; then
+                echo -e "${CYAN}--> Executing setup-ext4.sh...${NC}"
                 bash "${HELPERS_DIR}/setup-ext4.sh" "$SYS_USER" "$selected_disk"
             else
                 echo -e "${RED}Error: setup-ext4.sh helper script not found in helpers/ directory.${NC}"
@@ -251,10 +251,11 @@ while true; do
                     continue
                 fi
                 selected_disk_entry="${suitable_disks[$((disk_id - 1))]}"
-                IFS=';' read -r selected_disk _ _ <<< "$selected_disk_entry"
+                IFS=';' read -r selected_disk _ model <<< "$selected_disk_entry"
                 
                 # Execute ZFS helper script for single disk
                 if [ -f "${HELPERS_DIR}/setup-zfs.sh" ]; then
+                    echo -e "${CYAN}--> Executing setup-zfs.sh...${NC}"
                     bash "${HELPERS_DIR}/setup-zfs.sh" "$SYS_USER" "single" "$selected_disk"
                 else
                     echo -e "${RED}Error: setup-zfs.sh helper script not found in helpers/ directory.${NC}"
@@ -285,11 +286,12 @@ while true; do
                 
                 disk1_entry="${suitable_disks[$((disk1_id - 1))]}"
                 disk2_entry="${suitable_disks[$((disk2_id - 1))]}"
-                IFS=';' read -r disk1 _ _ <<< "$disk1_entry"
-                IFS=';' read -r disk2 _ _ <<< "$disk2_entry"
+                IFS=';' read -r disk1 _ model1 <<< "$disk1_entry"
+                IFS=';' read -r disk2 _ model2 <<< "$disk2_entry"
                 
                 # Execute ZFS helper script for mirror
                 if [ -f "${HELPERS_DIR}/setup-zfs.sh" ]; then
+                    echo -e "${CYAN}--> Executing setup-zfs.sh...${NC}"
                     bash "${HELPERS_DIR}/setup-zfs.sh" "$SYS_USER" "mirror" "$disk1" "$disk2"
                 else
                     echo -e "${RED}Error: setup-zfs.sh helper script not found in helpers/ directory.${NC}"

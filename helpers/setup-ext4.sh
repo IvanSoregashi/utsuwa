@@ -12,11 +12,18 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 # --- Parameters ---
 SYS_USER="${1}"
 DISK_NAME="${2}" # e.g. nvme0n1
+
+# --- Helper to log and run system commands ---
+run() {
+    echo -e "${BLUE}--> Running: ${BOLD}$*${NC}"
+    "$@"
+}
 
 echo -e "${CYAN}======================================================================${NC}"
 echo -e "                   EXT4 STORAGE PROVISIONING                         "
@@ -91,10 +98,10 @@ fi
 
 # 4. Partitioning
 echo -e "\n--> Creating GPT Partition Table on ${DISK_BY_ID}..."
-parted "$DISK_BY_ID" mklabel gpt
+run parted "$DISK_BY_ID" mklabel gpt
 
 echo -e "--> Creating primary ext4 partition spanning 100% of the drive..."
-parted "$DISK_BY_ID" mkpart primary ext4 0% 100%
+run parted "$DISK_BY_ID" mkpart primary ext4 0% 100%
 
 # Wait for udev to create new devnodes and links
 echo "--> Waiting for partition creation and udev synchronization..."
@@ -128,7 +135,7 @@ echo -e "Detected partition: ${GREEN}/dev/${PART_NAME}${NC} -> ${GREEN}${PART_BY
 
 # 5. Format Filesystem
 echo -e "\n--> Formatting ${PART_BY_ID} as ext4..."
-mkfs.ext4 "$PART_BY_ID"
+run mkfs.ext4 "$PART_BY_ID"
 
 # 6. Mount & Auto-Mount Options
 echo ""
@@ -148,7 +155,7 @@ if mountpoint -q "$MOUNT_POINT"; then
 fi
 
 echo "--> Mounting partition to ${MOUNT_POINT}..."
-mount "$PART_BY_ID" "$MOUNT_POINT"
+run mount "$PART_BY_ID" "$MOUNT_POINT"
 
 # Update /etc/fstab for boot mount persistence
 read -r -p "Configure automatic mounting on boot in /etc/fstab? (y/n) [y]: " configure_fstab
@@ -160,14 +167,14 @@ if [[ "$configure_fstab" =~ ^[Yy]$ ]]; then
         echo -e "${YELLOW}An entry for ${MOUNT_POINT} already exists in /etc/fstab. Skipping insertion.${NC}"
     else
         echo -e "--> Appending mount entry to /etc/fstab..."
-        echo "${PART_BY_ID} ${MOUNT_POINT} ext4 defaults 0 2" | tee -a /etc/fstab > /dev/null
+        echo "${PART_BY_ID} ${MOUNT_POINT} ext4 defaults 0 2" | run tee -a /etc/fstab > /dev/null
         echo "  Successfully configured fstab auto-mount."
     fi
 fi
 
 # 7. Permissions & Ownership alignment
 echo -e "--> Changing folder ownership to system user ${GREEN}${SYS_USER}${NC}..."
-chown -R "${SYS_USER}:${SYS_USER}" "$MOUNT_POINT"
+run chown -R "${SYS_USER}:${SYS_USER}" "$MOUNT_POINT"
 
 echo -e "\n${GREEN}✔ Ext4 Partition successfully created, formatted, and mounted!${NC}"
 echo -e "Details:"
