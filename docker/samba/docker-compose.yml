@@ -3,7 +3,10 @@ services:
     image: dperson/samba:latest
     container_name: samba
     restart: no
+    user: "1000:1000" # Force running as user
     environment:
+      - PUID=1000
+      - PGID=1000
       - TZ=Asia/Almaty
     volumes:
       - ./smb.conf:/etc/samba/smb.conf:ro

@@ -1,0 +1,34 @@
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    user: "1000:1000" # Force running as user
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Almaty
+    volumes:
+      # Configurations/Database stored securely on encrypted pool
+      - config:/var/syncthing/config
+      # Sync targets
+      - vault:/var/syncthing/vault
+
+    ports:
+      - 8384:8384 # Web UI
+      - 22000:22000/tcp # Listening port
+      - 22000:22000/udp # Listening port
+    restart: no # Controlled manually or via systemd after ZFS unlock
+
+volumes:
+  vault:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/vault
+  config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/syncthing

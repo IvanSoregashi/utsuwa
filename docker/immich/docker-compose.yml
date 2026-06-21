@@ -1,0 +1,77 @@
+name: immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    user: "1000:1000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - upload:/usr/src/app/upload
+      - system:/usr/src/app/system
+    env_file:
+      - .env
+    ports:
+      - "2283:2283"
+    depends_on:
+      - redis
+      - database
+    restart: no
+    deploy:
+      resources:
+        limits:
+          memory: 2000M
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    user: "1000:1000"
+    volumes:
+      - system/model-cache:/cache
+    env_file:
+      - .env
+    restart: no
+    deploy:
+      resources:
+        limits:
+          memory: 1500M # Crucial for keeping the N150 stable during scans
+
+  redis:
+    container_name: immich_redis
+    image: docker.io/valkey/valkey:9
+    user: "1000:1000"
+    restart: no
+    healthcheck:
+      test: redis-cli ping || exit 1
+
+  database:
+    container_name: immich_postgres
+    image: tensorchord/pgvecto-rs:pg16-v0.2.1
+    user: "1000:1000"
+    environment:
+      POSTGRES_DB: immich
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+    restart: no
+
+volumes:
+  postgres_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/immich/db
+  system:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/immich
+  upload:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/data/gallery/immich
