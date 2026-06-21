@@ -6,6 +6,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
+      - USER=${SAMBA_USER};${SAMBA_PASSWORD};1000
       - TZ=Asia/Almaty
       - LOG_LEVEL=2 # Standard logging
     volumes:
