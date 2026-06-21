@@ -15,7 +15,6 @@ services:
       -g "force user = ${SAMBA_USER}"
       -g "force group = ${SAMBA_USER}"
     volumes:
-      - ./smb.conf:/etc/samba/smb.conf:ro
       - vault:/share/vault
       - gallery:/share/gallery
       - books:/share/books
