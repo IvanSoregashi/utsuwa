@@ -9,11 +9,11 @@ services:
     # Configure everything directly via container command parameters:
     command: >
       -u "${SAMBA_USER};${SAMBA_USER_PASSWORD};1000;${SAMBA_USER};1000"
-      -s "vault;/share/vault;yes;no;no;sendo;sendo;sendo"
-      -s "gallery;/share/gallery;yes;no;no;sendo;sendo;sendo"
-      -s "books;/share/books;yes;no;no;sendo;sendo;sendo"
-      -g "force user = sendo"
-      -g "force group = sendo"
+      -s "vault;/share/vault;yes;no;no;${SAMBA_USER};${SAMBA_USER};${SAMBA_USER}"
+      -s "gallery;/share/gallery;yes;no;no;${SAMBA_USER};${SAMBA_USER};${SAMBA_USER}"
+      -s "books;/share/books;yes;no;no;${SAMBA_USER};${SAMBA_USER};${SAMBA_USER}"
+      -g "force user = ${SAMBA_USER}"
+      -g "force group = ${SAMBA_USER}"
     volumes:
       - ./smb.conf:/etc/samba/smb.conf:ro
       - vault:/share/vault
