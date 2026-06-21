@@ -4,11 +4,16 @@ services:
     container_name: samba
     restart: no
     environment:
-      - PUID=1000
-      - PGID=1000
-      - USER=${SAMBA_USER};${SAMBA_USER_PASSWORD};1000
       - TZ=Asia/Almaty
       - LOG_LEVEL=2 # Standard logging
+    # Configure everything directly via container command parameters:
+    command: >
+      -u "${SAMBA_USER};${SAMBA_USER_PASSWORD};1000;${SAMBA_USER};1000"
+      -s "vault;/share/vault;yes;no;no;sendo;sendo;sendo"
+      -s "gallery;/share/gallery;yes;no;no;sendo;sendo;sendo"
+      -s "books;/share/books;yes;no;no;sendo;sendo;sendo"
+      -g "force user = sendo"
+      -g "force group = sendo"
     volumes:
       - ./smb.conf:/etc/samba/smb.conf:ro
       - vault:/share/vault
