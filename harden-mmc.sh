@@ -30,6 +30,7 @@ echo -e "Starting eMMC Hardening Suite..."
 # Run sub-scripts
 bash "${HARDEN_DIR}/memory.sh" "$DATA_PATH"
 bash "${HARDEN_DIR}/logs.sh"
-bash "${HARDEN_DIR}/storage.sh" "$DATA_PATH"
+bash "${HARDEN_DIR}/filesystem.sh"
+bash "${HARDEN_DIR}/docker.sh" "$DATA_PATH"
 
 echo -e "\n${GREEN}✔ Hardening complete. Please monitor your system logs for any issues.${NC}"
