@@ -8,6 +8,8 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Asia/Almaty
+      - LOG_LEVEL=2 # Standard logging
+    command: -t -p # -t = log to stdout, -p = enable printing of smb configs
     volumes:
       - ./smb.conf:/etc/samba/smb.conf:ro
       - vault:/share/vault
