@@ -12,6 +12,7 @@ echo "--> Initializing Syncthing..."
 
 # Create application state directory
 mkdir -p "${SECURE_PATH}/app/syncthing"
+mkdir -p "${SECURE_PATH}/vault"
 
 # Align permissions
 chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/syncthing"
