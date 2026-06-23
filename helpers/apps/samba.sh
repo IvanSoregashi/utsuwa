@@ -10,16 +10,12 @@ SYS_USER="$3"
 
 echo "--> Initializing Samba Server configuration & shares..."
 
-# Create secure configuration directory (for logs)
-mkdir -p "${SECURE_PATH}/app/samba/log"
-
 # Create bulk shared folders
 mkdir -p "${SECURE_PATH}/vault"
 mkdir -p "${DATA_PATH}/gallery"
 mkdir -p "${DATA_PATH}/books"
 
 # Align permissions
-chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/samba"
 chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/vault"
 chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/gallery"
 chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/books"
