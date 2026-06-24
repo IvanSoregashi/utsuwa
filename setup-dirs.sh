@@ -129,13 +129,6 @@ fi
 
 
 # --- 5. Interactive Application Setup Selection ---
-echo -e "\n${BOLD}Application Provisioning Mode:${NC}"
-echo "  1) Set up ALL applications (Samba, Syncthing, Immich, WebDAV, Observability, Net Library, Gitea, Obsidian, Backups)"
-echo "  2) Choose applications interactively"
-echo "  3) Skip applications (Base storage layers only)"
-echo ""
-read -r -p "Select choice [1-3]: " app_choice
-
 run_app_setup() {
     local script_path="$1"
     local script_name
@@ -154,99 +147,88 @@ if [ -d "$APPS_HELPERS_DIR" ]; then
     if [ ${#app_scripts[@]} -eq 0 ]; then
         echo -e "${YELLOW}Warning: No application setup scripts found under ${APPS_HELPERS_DIR}.${NC}"
     else
-        case "$app_choice" in
-            1)
+        echo -e "\n${BOLD}Application Selection:${NC}"
+        declare -a pretty_names
+        for i in "${!app_scripts[@]}"; do
+            script="${app_scripts[i]}"
+            script_name=$(basename "$script" .sh)
+            # format name nicely for printing (e.g. net-library -> Net Library)
+            pretty_name=$(echo "$script_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+            pretty_names[i]="$pretty_name"
+            echo -e "  $((i + 1))) $pretty_name"
+        done
+        echo -e "  ${BOLD}A) ALL Applications${NC}"
+        echo -e "  ${BOLD}S) SKIP (Base storage layers only)${NC}"
+        echo ""
+
+        while true; do
+            read -r -p "Select apps [1-${#app_scripts[@]}], 'A' for all, or 'S' to skip: " user_input
+            
+            # Handle empty or Skip
+            if [ -z "${user_input// /}" ] || [[ "$user_input" =~ ^[Ss]$ ]]; then
+                echo -e "\nSkipping application provisioning as requested."
+                break
+            fi
+
+            # Handle ALL
+            if [[ "$user_input" =~ ^[Aa]$ ]]; then
                 echo -e "\n--> Initializing ALL applications..."
                 for script in "${app_scripts[@]}"; do
                     run_app_setup "$script"
                 done
-                ;;
-            2)
-                echo -e "\n--> Starting Interactive Application Selector..."
-                echo -e "\nAvailable Applications:"
-                
-                declare -a pretty_names
-                for i in "${!app_scripts[@]}"; do
-                    script="${app_scripts[i]}"
-                    script_name=$(basename "$script" .sh)
-                    # format name nicely for printing (e.g. net-library -> Net Library)
-                    pretty_name=$(echo "$script_name" | sed 's/-/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
-                    pretty_names[i]="$pretty_name"
-                    echo -e "  $((i + 1))) $pretty_name"
+                break
+            fi
+
+            # Handle Selection
+            cleaned_input="${user_input//,/ }"
+            selected_indices=()
+            invalid_input=false
+            
+            for choice in $cleaned_input; do
+                if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#app_scripts[@]}" ]; then
+                    selected_indices+=("$((choice - 1))")
+                else
+                    echo -e "${RED}Invalid selection: $choice${NC}"
+                    invalid_input=true
+                fi
+            done
+
+            if [ "$invalid_input" = true ]; then
+                echo -e "Please try again with valid numbers, 'A', or 'S'.\n"
+                continue
+            fi
+
+            # Deduplicate indices
+            declare -A seen
+            dedup_indices=()
+            for idx in "${selected_indices[@]}"; do
+                if [ -z "${seen[$idx]+_}" ]; then
+                    seen[$idx]=1
+                    dedup_indices+=("$idx")
+                fi
+            done
+
+            # Sort indices to run apps in alphabetical/listed order
+            sorted_indices=($(for idx in "${dedup_indices[@]}"; do echo "$idx"; done | sort -n))
+
+            echo -e "\nYou selected:"
+            for idx in "${sorted_indices[@]}"; do
+                echo -e "  - ${pretty_names[idx]}"
+            done
+            echo ""
+
+            read -r -p "Proceed with initializing these applications? (y/n) [y]: " confirm_install
+            confirm_install=${confirm_install:-y}
+            if [[ "$confirm_install" =~ ^[Yy]$ ]]; then
+                echo -e "\n--> Initializing chosen applications..."
+                for idx in "${sorted_indices[@]}"; do
+                    run_app_setup "${app_scripts[idx]}"
                 done
-                echo ""
-
-                while true; do
-                    read -r -p "Enter the numbers of the apps to install (separated by spaces or commas, e.g. '1, 3, 5'): " user_input
-                    
-                    if [ -z "${user_input// /}" ]; then
-                        read -r -p "No applications selected. Cancel selection? (y/n) [y]: " confirm_cancel
-                        confirm_cancel=${confirm_cancel:-y}
-                        if [[ "$confirm_cancel" =~ ^[Yy]$ ]]; then
-                            echo -e "\nSkipping application provisioning as requested."
-                            break
-                        fi
-                        continue
-                    fi
-
-                    cleaned_input="${user_input//,/ }"
-                    
-                    selected_indices=()
-                    invalid_input=false
-                    
-                    for choice in $cleaned_input; do
-                        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#app_scripts[@]}" ]; then
-                            selected_indices+=("$((choice - 1))")
-                        else
-                            echo -e "${RED}Invalid selection: $choice${NC}"
-                            invalid_input=true
-                        fi
-                    done
-
-                    if [ "$invalid_input" = true ]; then
-                        echo -e "Please try again with valid numbers from the list.\n"
-                        continue
-                    fi
-
-                    # Deduplicate indices
-                    declare -A seen
-                    dedup_indices=()
-                    for idx in "${selected_indices[@]}"; do
-                        if [ -z "${seen[$idx]+_}" ]; then
-                            seen[$idx]=1
-                            dedup_indices+=("$idx")
-                        fi
-                    done
-
-                    # Sort indices to run apps in alphabetical/listed order
-                    sorted_indices=($(for idx in "${dedup_indices[@]}"; do echo "$idx"; done | sort -n))
-
-                    echo -e "\nYou selected:"
-                    for idx in "${sorted_indices[@]}"; do
-                        echo -e "  - ${pretty_names[idx]}"
-                    done
-                    echo ""
-
-                    read -r -p "Proceed with initializing directory trees for these applications? (y/n) [y]: " confirm_install
-                    confirm_install=${confirm_install:-y}
-                    if [[ "$confirm_install" =~ ^[Yy]$ ]]; then
-                        echo -e "\n--> Initializing chosen applications..."
-                        for idx in "${sorted_indices[@]}"; do
-                            run_app_setup "${app_scripts[idx]}"
-                        done
-                        break
-                    else
-                        echo -e "Selection discarded.\n"
-                    fi
-                done
-                ;;
-            3)
-                echo -e "\nSkipping application provisioning as requested."
-                ;;
-            *)
-                echo -e "\n${RED}Invalid option. Skipping application initialization.${NC}"
-                ;;
-        esac
+                break
+            else
+                echo -e "Selection discarded.\n"
+            fi
+        done
     fi
 else
     echo -e "${YELLOW}Warning: Application helpers directory does not exist at ${APPS_HELPERS_DIR}.${NC}"
