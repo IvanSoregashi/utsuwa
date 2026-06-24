@@ -1,0 +1,43 @@
+services:
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web:latest
+    container_name: calibre-web
+    user: "1000:1000"
+    environment:
+      - TZ=Asia/Almaty
+    volumes:
+      - calibre-config:/config
+      - books:/books
+    ports:
+      - 8083:8083
+    restart: no
+
+  webdav:
+    image: rclone/rclone:latest
+    container_name: moon-webdav
+    ports:
+      - 8084:8084
+    volumes:
+      - sync-data:/data
+    command: serve webdav /data --addr :8084 --user admin --pass admin123
+    restart: no
+
+volumes:
+  sync-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/library/sync
+  calibre-config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app/library/calibre-config
+  books:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/data/books
