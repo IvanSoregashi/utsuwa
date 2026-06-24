@@ -2,8 +2,9 @@ services:
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
-    user: "1000:1000"
     environment:
+      - PUID=1000
+      - PGID=1000
       - TZ=Asia/Almaty
       - CALIBRE_LIBRARY_PATH=/books
     volumes:
