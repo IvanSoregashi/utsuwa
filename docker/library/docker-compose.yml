@@ -5,6 +5,7 @@ services:
     user: "1000:1000"
     environment:
       - TZ=Asia/Almaty
+      - CALIBRE_LIBRARY_PATH=/books
     volumes:
       - calibre-config:/config
       - books:/books
@@ -15,15 +16,18 @@ services:
   webdav:
     image: rclone/rclone:latest
     container_name: moon-webdav
+    user: "1000:1000"
+    environment:
+      - TZ=Asia/Almaty
+    volumes:
+      - sync:/data
     ports:
       - 8084:8084
-    volumes:
-      - sync-data:/data
     command: serve webdav /data --addr :8084 --user admin --pass admin123
     restart: no
 
 volumes:
-  sync-data:
+  sync:
     driver: local
     driver_opts:
       type: none

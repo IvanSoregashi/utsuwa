@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Utsuwa App Setup: Net Library (Calibre, ePUB etc.)
+# Utsuwa App Setup: Library (Calibre-Web, WebDAV)
 # ==============================================================================
 set -euo pipefail
 
@@ -8,11 +8,13 @@ SECURE_PATH="$1"
 DATA_PATH="$2"
 SYS_USER="$3"
 
-echo "--> Initializing Net Library..."
+echo "--> Initializing Library (Calibre-Web + WebDAV)..."
 
-# Create data books directory
+mkdir -p "${SECURE_PATH}/app/library/calibre-config"
+mkdir -p "${SECURE_PATH}/app/library/sync"
 mkdir -p "${DATA_PATH}/books"
 
-# Align permissions
+chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/library"
 chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/books"
-echo "  Net Library directories initialized successfully."
+
+echo "  Library directories initialized successfully."
