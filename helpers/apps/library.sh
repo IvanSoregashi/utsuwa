@@ -14,6 +14,7 @@ mkdir -p "${SECURE_PATH}/app/library/calibre-config"
 mkdir -p "${SECURE_PATH}/app/library/sync"
 mkdir -p "${DATA_PATH}/books"
 
+# Align permissions
 chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/app/library"
 chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/books"
 

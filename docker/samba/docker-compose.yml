@@ -12,12 +12,14 @@ services:
       -s "vault;/share/vault;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "gallery;/share/gallery;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "books;/share/books;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
+      -s "apps;/share/apps;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -g "force user = ${SAMBA_USER}"
       -g "force group = ${SAMBA_USER}"
     volumes:
       - vault:/share/vault
       - gallery:/share/gallery
       - books:/share/books
+      - apps:/share/apps
     ports:
       - "445:445" # SMB/CIFS (Modern Windows)
       - "139:139" # NetBIOS Session Service (Legacy)
@@ -41,3 +43,9 @@ volumes:
       type: none
       o: bind
       device: /srv/data/books
+  apps:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/app

@@ -1,7 +1,10 @@
+name: library
+
 services:
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
     container_name: calibre-web
+    # linuxserver.io containers do not support `user: "1000:1000"`
     environment:
       - PUID=1000
       - PGID=1000
