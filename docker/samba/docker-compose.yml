@@ -14,7 +14,7 @@ services:
       -s "apps;/share/apps;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "gallery;/share/gallery;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "books;/share/books;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
-      -s "download;/share/download;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
+      -s "downloads;/share/downloads;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -g "force user = ${SAMBA_USER}"
       -g "force group = ${SAMBA_USER}"
     volumes:
