@@ -31,4 +31,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app/syncthing
+      device: /srv/encrypted/apps/syncthing

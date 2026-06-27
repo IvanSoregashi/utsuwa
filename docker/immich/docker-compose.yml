@@ -62,13 +62,13 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app/immich/db
+      device: /srv/encrypted/apps/immich/db
   system:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app/immich
+      device: /srv/encrypted/apps/immich
   upload:
     driver: local
     driver_opts:

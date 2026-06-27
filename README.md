@@ -27,7 +27,7 @@ To ensure complete portability, application containers do not reference host-spe
 
 | Host Storage Pool | Standardized Path | Purpose / Contents |
 | :--- | :--- | :--- |
-| `/vault/secure` (ZFS Encrypted) | `/srv/encrypted/` | High-value directories: `/vault` (Obsidian notebook), `/app` (Docker configs) |
+| `/vault/secure` (ZFS Encrypted) | `/srv/encrypted/` | High-value directories: `/vault` (Obsidian notebook), `/apps` (Docker configs) |
 | `/bulk` (ext4 Unencrypted) | `/srv/data/` | Bulk directories: `/gallery` (Photos/Immich), `/books` (E-books) |
 
 By writing all Docker Compose files to reference `/srv/encrypted/` or `/srv/data/`, the entire container stack can be cloned and run on a standard single-disk Virtual Private Server (VPS) or fallback hardware without modifying host paths.

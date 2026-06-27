@@ -10,9 +10,11 @@ services:
     command: >
       -u "${SAMBA_USER};${SAMBA_USER_PASSWORD};1000;${SAMBA_USER};1000"
       -s "vault;/share/vault;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
+      -s "webdav;/share/webdav;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
+      -s "apps;/share/apps;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "gallery;/share/gallery;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -s "books;/share/books;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
-      -s "apps;/share/apps;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
+      -s "download;/share/download;yes;no;no;${SAMBA_USER};none;${SAMBA_USER}"
       -g "force user = ${SAMBA_USER}"
       -g "force group = ${SAMBA_USER}"
     volumes:
@@ -31,6 +33,18 @@ volumes:
       type: none
       o: bind
       device: /srv/encrypted/vault
+  apps:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/apps
+  webdav:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/encrypted/webdav
   gallery:
     driver: local
     driver_opts:
@@ -43,9 +57,9 @@ volumes:
       type: none
       o: bind
       device: /srv/data/books
-  apps:
+  downloads:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app
+      device: /srv/data/downloads

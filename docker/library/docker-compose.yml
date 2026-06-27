@@ -24,25 +24,25 @@ services:
     environment:
       - TZ=Asia/Almaty
     volumes:
-      - sync:/data
+      - data:/data
     ports:
       - 8084:8084
     command: serve webdav /data --addr :8084 --user admin --pass admin123
     restart: no
 
 volumes:
-  sync:
+  data:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app/library/sync
+      device: /srv/encrypted/webdav
   calibre-config:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /srv/encrypted/app/library/calibre-config
+      device: /srv/encrypted/apps/calibre-config
   books:
     driver: local
     driver_opts:
