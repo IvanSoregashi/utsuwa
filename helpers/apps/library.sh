@@ -15,7 +15,7 @@ mkdir -p "${SECURE_PATH}/webdav"
 mkdir -p "${DATA_PATH}/books"
 
 # Align permissions
-chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/apps/library"
+chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/apps/calibre-config"
 chown -R "${SYS_USER}:${SYS_USER}" "${SECURE_PATH}/webdav"
 chown -R "${SYS_USER}:${SYS_USER}" "${DATA_PATH}/books"
 
